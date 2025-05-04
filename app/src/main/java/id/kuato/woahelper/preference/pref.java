@@ -24,9 +24,20 @@ public enum pref {
     public static final String version = "woa last app version";
     public static final String mountLocation = "woa mount location";
 	public static final String appUpdate = "woa app update";
+    public static final String widgetOpacity = "widget opacity";
 
     public static SharedPreferences getSharedPreference(final Context context) {
         return PreferenceManager.getDefaultSharedPreferences(context);
+    }
+
+
+    public static void setWidgetOpacity(final Context context, final int value) {
+        final SharedPreferences.Editor editor = pref.getSharedPreference(context).edit();
+        editor.putInt(pref.widgetOpacity, value);
+        editor.apply();
+    }
+    public static int getWidgetOpacity(final Context context) {
+        return pref.getSharedPreference(context).getInt(pref.widgetOpacity, 255);
     }
 
     public static void setlocale(final Context context, final String value) {
