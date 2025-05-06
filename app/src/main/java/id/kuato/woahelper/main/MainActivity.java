@@ -46,12 +46,10 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
+import id.kuato.woahelper.BuildConfig;
 import id.kuato.woahelper.R;
 import id.kuato.woahelper.databinding.ActivityMainBinding;
-//import id.kuato.woahelper.databinding.LangaugesBinding;
 import id.kuato.woahelper.databinding.ScriptsBinding;
 import id.kuato.woahelper.databinding.SetPanelBinding;
 import id.kuato.woahelper.databinding.ToolboxBinding;
@@ -60,10 +58,6 @@ import id.kuato.woahelper.util.RAM;
 
 public class MainActivity extends AppCompatActivity {
 
-	public final class BuildConfig {
-	public static final String VERSION_NAME = "1.8.4_BETA41";
-	}
-//	static final Object lock = new Object();
 	private static final float SIZE = 12.0F;
 	private static final float SIZE1 = 15.0F;
 	private static final float SIZE2 = 30.0F;
@@ -72,9 +66,7 @@ public class MainActivity extends AppCompatActivity {
 	public SetPanelBinding k;
 	public ToolboxBinding n;
 	public ScriptsBinding z;
-//	public LangaugesBinding l;
 	public String winpath;
-	public int backable;
 	String panel;
 	String mounted;
 	String finduefi;
@@ -82,25 +74,13 @@ public class MainActivity extends AppCompatActivity {
 	String model;
 	String dbkpmodel;
 	String win;
-	String findwin;
 	String findboot;
 	String boot;
 	String grouplink = "https://t.me/woahelperchat";
 	String guidelink = "https://github.com/n00b69";
-	String currentVersion = BuildConfig.VERSION_NAME;
-	private ExecutorService executorService = Executors.newFixedThreadPool(4);
 	private double ramvalue;
+	boolean unsupported = false;
 	
-	public static String extractNumberFromString(String source) {
-		StringBuilder result = new StringBuilder(100);
-		for (char ch : source.toCharArray()) {
-			if ('0' <= ch && '9' >= ch) {
-				result.append(ch);
-			}
-		}
-		return result.toString();
-	}
-
 	public static boolean isNetworkConnected(Context context) {
 		ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
 		Network activeNetwork = connectivityManager.getActiveNetwork();
@@ -125,7 +105,11 @@ public class MainActivity extends AppCompatActivity {
 				String outDir = String.valueOf(this.getFilesDir());
 				File outFile = new File(outDir, filename);
 				out = new FileOutputStream(outFile);
-				this.copyFile(in, out);
+				byte[] buffer = new byte[1024];
+				int read;
+				while (-1 != (read = in.read(buffer))) {
+					out.write(buffer, 0, read);
+				}
 				in.close();
 				out.flush();
 				out.close();
@@ -137,30 +121,10 @@ public class MainActivity extends AppCompatActivity {
 		ShellUtils.fastCmd("chmod 777 " + this.getFilesDir() + "/libntfs-3g.so");
 	}
 
-	private void copyFile(InputStream in, OutputStream out) throws IOException {
-		byte[] buffer = new byte[1024];
-		int read;
-		while (-1 != (read = in.read(buffer))) {
-			out.write(buffer, 0, read);
-		}
-	}
-
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
-		if (Objects.equals(currentVersion, pref.getVersion(this))) {
-			String[] files = {"ARMRepo.url", "ARMSoftware.url", "boot_img_auto-flasher_V1.1.exe", "dbkp.cepheus.bin", "dbkp.hotdog.bin", "dbkp.nabu.bin", "dbkp.nabu2.bin", "dbkp8150.cfg", "devcfg-sdd.conf", "devcfg-boot-sdd.conf", "Flash Devcfg.lnk", "install.bat", "Optimized_Taskbar_Control_V3.1.exe", "QuickRotate_V3.0.exe", "RemoveEdge.bat", "sdd.conf", "sdd.exe", "sta.exe", "Switch to Android.lnk", "TestedSoftware.url", "USB Host Mode.lnk", "usbhostmode.exe", "WorksOnWoa.url"};
-			int i = 0;
-			while (!files[i].isEmpty()) {
-				if (ShellUtils.fastCmd(String.format("ls %1$s |grep %2$s", getFilesDir(), files[i])).isEmpty()) {
-					copyAssets();
-					break;
-				}
-				i++;
-			}
-		} else {
-			copyAssets();
-			pref.setVersion(this, currentVersion);
-		}
+		copyAssets();
+
 		super.onCreate(savedInstanceState);
 		final Dialog dialog = new Dialog(this);
 		final Dialog languages = new Dialog(this);
@@ -170,7 +134,6 @@ public class MainActivity extends AppCompatActivity {
 		languages.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
 		this.x = ActivityMainBinding.inflate(this.getLayoutInflater());
 		this.setContentView(this.x.getRoot());
-		this.backable = 0;
 		this.x.toolbarlayout.settings.setVisibility(View.VISIBLE);
 		this.k = SetPanelBinding.inflate(this.getLayoutInflater());
 		this.n = ToolboxBinding.inflate(this.getLayoutInflater());
@@ -178,20 +141,15 @@ public class MainActivity extends AppCompatActivity {
 		Drawable iconToolbar = ResourcesCompat.getDrawable(this.getResources(), R.drawable.ic_launcher_foreground, null);
 		this.setSupportActionBar(this.x.toolbarlayout.toolbar);
 		this.x.toolbarlayout.toolbar.setTitle(this.getString(R.string.app_name));
-		this.x.toolbarlayout.toolbar.setSubtitle("v" + this.currentVersion);
+		this.x.toolbarlayout.toolbar.setSubtitle("v" + BuildConfig.VERSION_NAME);
 		this.x.toolbarlayout.toolbar.setNavigationIcon(iconToolbar);
-		this.checkdevice();
-		this.checkuefi();
-		this.findwin = ShellUtils.fastCmd("find /dev/block | grep win");
-		if (this.findwin.isEmpty()) this.findwin = ShellUtils.fastCmd("find /dev/block | grep mindows");
-		if (this.findwin.isEmpty()) this.findwin = ShellUtils.fastCmd("find /dev/block | grep windows");
-		if (this.findwin.isEmpty()) this.findwin = ShellUtils.fastCmd("find /dev/block | grep Win");
-		if (this.findwin.isEmpty()) this.findwin = ShellUtils.fastCmd("find /dev/block | grep Mindows");
-		if (this.findwin.isEmpty()) this.findwin = ShellUtils.fastCmd("find /dev/block | grep Windows");
-		this.win = ShellUtils.fastCmd("realpath " + this.findwin);
-		this.findboot = ShellUtils.fastCmd("find /dev/block | grep boot$(getprop ro.boot.slot_suffix)");
+		this.device = ShellUtils.fastCmd("getprop ro.product.device ");
+		this.model = ShellUtils.fastCmd("getprop ro.product.model");
+		this.win = getWin();
+		this.boot = getBoot();
+		/*this.findboot = ShellUtils.fastCmd("find /dev/block | grep boot$(getprop ro.boot.slot_suffix)");
 		if (this.findboot.isEmpty()) this.findboot = ShellUtils.fastCmd("find /dev/block | grep BOOT$(getprop ro.boot.slot_suffix)");
-		this.boot = ShellUtils.fastCmd("realpath " + this.findboot);
+		this.boot = ShellUtils.fastCmd("realpath " + this.findboot);*/
 		this.winpath = (pref.getMountLocation(this) ? "/mnt/Windows" : "/mnt/sdcard/Windows");
 		String mount_stat = ShellUtils.fastCmd("su -mm -c mount | grep " + this.win);
 		if (mount_stat.isEmpty()) this.mounted = getString(R.string.mountt);
@@ -204,7 +162,6 @@ public class MainActivity extends AppCompatActivity {
 		TextView messages = dialog.findViewById(R.id.messages);
 		ImageView icons = dialog.findViewById(R.id.icon);
 		ProgressBar bar = dialog.findViewById(R.id.progress);
-//		DisplayMetrics metrics = this.getResources().getDisplayMetrics();
 		Drawable android = ResourcesCompat.getDrawable(this.getResources(), R.drawable.android, null);
 		Drawable atlasrevi = ResourcesCompat.getDrawable(this.getResources(), R.drawable.ic_ar_mainactivity, null);
 		Drawable boot = ResourcesCompat.getDrawable(this.getResources(), R.drawable.ic_disk, null);
@@ -584,9 +541,10 @@ public class MainActivity extends AppCompatActivity {
 					this.x.DeviceImage.setImageDrawable(ResourcesCompat.getDrawable(this.getResources(), R.drawable.unknown, null));
 					this.x.deviceName.setText(this.device);
 					this.n.cvDumpModem.setVisibility(View.VISIBLE);
+					this.unsupported = true;
 				}
 			}
-		
+		this.checkdevice();
 		this.x.tvRamvalue.setText(String.format(this.getString(R.string.ramvalue), this.ramvalue));
 		this.x.tvPanel.setText(String.format(this.getString(R.string.paneltype), this.panel));
 		this.x.cvGuide.setOnClickListener(v -> {
@@ -877,7 +835,6 @@ public class MainActivity extends AppCompatActivity {
 			this.x.mainlayout.startAnimation(AnimationUtils.loadAnimation(this, R.anim.slide_out));
 			this.setContentView(this.n.getRoot());
 			this.n.toolboxtab.startAnimation(AnimationUtils.loadAnimation(this, R.anim.slide_in));
-			this.backable = 1;
 			this.n.toolbarlayout.settings.setVisibility(View.GONE);
 			this.n.toolbarlayout.toolbar.setTitle(this.getString(R.string.toolbox_title));
 			this.n.toolbarlayout.toolbar.setNavigationIcon(iconToolbar);
@@ -934,7 +891,6 @@ public class MainActivity extends AppCompatActivity {
 			this.n.toolboxtab.startAnimation(AnimationUtils.loadAnimation(this, R.anim.slide_out));
 			this.setContentView(this.z.getRoot());
 			this.z.scriptstab.startAnimation(AnimationUtils.loadAnimation(this, R.anim.slide_in));
-			this.backable = 1;
 			this.z.toolbarlayout.settings.setVisibility(View.GONE);
 			this.z.toolbarlayout.toolbar.setTitle(this.getString(R.string.script_title));
 			this.z.toolbarlayout.toolbar.setNavigationIcon(iconToolbar);
@@ -1884,7 +1840,6 @@ public class MainActivity extends AppCompatActivity {
 		this.k.toolbarlayout.toolbar.setNavigationIcon(iconToolbar);
 		//MainActivity.this.overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
 		this.x.toolbarlayout.settings.setOnClickListener(v -> {
-		this.backable = 1;
 		this.x.mainlayout.startAnimation(AnimationUtils.loadAnimation(this, R.anim.slide_out));
 		this.setContentView(this.k.getRoot());
 		this.k.settingsPanel.startAnimation(AnimationUtils.loadAnimation(this, R.anim.slide_in));
@@ -2039,13 +1994,13 @@ public class MainActivity extends AppCompatActivity {
 			this.k.settingsPanel.startAnimation(AnimationUtils.loadAnimation(this, R.anim.slide_back_out));
 			this.setContentView(this.x.getRoot());
 			this.x.mainlayout.startAnimation(AnimationUtils.loadAnimation(this, R.anim.slide_back_in));
-			this.backable = 0;
 		});
 	}
 
 	@Override
 	public void onResume() {
 		super.onResume();
+		this.checkwin();
 		this.checkuefi();
 	}
 
@@ -2057,7 +2012,6 @@ public class MainActivity extends AppCompatActivity {
 				this.z.scriptstab.startAnimation(AnimationUtils.loadAnimation(this, R.anim.slide_back_out));
 				this.setContentView(this.n.getRoot());
 				this.n.toolboxtab.startAnimation(AnimationUtils.loadAnimation(this, R.anim.slide_back_in));
-				this.backable++;
 				break;
 			case R.id.toolboxtab:
 				this.n.toolboxtab.startAnimation(AnimationUtils.loadAnimation(this, R.anim.slide_back_out));
@@ -2077,6 +2031,15 @@ public class MainActivity extends AppCompatActivity {
 				this.setContentView(this.x.getRoot());
 				break;
 		}
+	}
+
+	public static String getWin() {
+		String partition = ShellUtils.fastCmd("find /dev/block | grep -i -E \"win|mindows|windows\" | head -1");
+		return ShellUtils.fastCmd("realpath " + partition);
+	}
+	public static String getBoot() {
+		String partition = ShellUtils.fastCmd("find /dev/block | grep boot$(getprop ro.boot.slot_suffix) | grep -E \"boot|BOOT\" | head -1");
+		return ShellUtils.fastCmd("realpath " + partition);
 	}
 	
 	public void flash(String uefi) {
@@ -2141,10 +2104,7 @@ public class MainActivity extends AppCompatActivity {
 		yesButton.setVisibility(View.GONE);
 		noButton.setVisibility(View.GONE);
 		dismissButton.setVisibility(View.GONE);
-		String[] supported = {"a52sxq", "alpha_lao_com", "alphalm_lao_com", "alphaplus_lao_com", "alphalm", "alphaplus", "alioth", "andromeda", "betalm", "betalm_lao_com", "beryllium", "bhima", "cepheus", "cheeseburger", "chiron", "curtana2", "curtana", "curtana_india", "curtana_cn", "curtanacn", "cmi", "davinci", "dumpling", "dipper", "durandal", "durandal_india", "dm3q", "dm3", "enchilada", "equuleus", "excalibur", "excalibur_india", "e3q", "flashlmdd", "flash_lao_com", "flashlm", "flashlmdd_lao_com", "fajita", "guacamole", "guacamoleb", "guacamoleg", "guacamoles", "guacamolet", "gram", "gts6l", "gts6lwifi", "hotdog", "hotdogb", "hotdogg", "houji", "husky", "ursa", "joan", "joyeuse", "judyln", "judyp", "judypn", "karna", "lisa", "marble", "meizu20pro", "meizu20Pro", "mh2lm", "mh2lm_lao_com", "mh2lm5g", "mh2lm5g_lao_com", "miatoll", "nabu", "nx729j", "NX729J", "OnePlus5", "OnePlus5T", "OnePlus6", "OnePlus6T", "OnePlus6TSingle", "OnePlus7", "OnePlus7Pro", "OnePlus7ProNR", "OnePlus7ProTMO", "OnePlus7Pro4G", "OnePlus7T", "OnePlus7TPro", "OnePlus7TPro4G", "OnePlus7TPro5G", "OnePlus7TProNR", "OP7ProNRSpr", "pipa", "perseus", "polaris", "Pong", "pong", "q2q", "raphael", "raphaelin", "raphaels", "redfin", "RMX2170", "RMX2061", "sagit", "surya", "vayu", "venus", "winner", "winnerx", "xpeng", "herolte", "beyond1lte", "beyond1qlte", "beyond1", "ingres", "vili", "lavender", "star2qlte", "star2qltechn", "r3q", "haotian", "Nord", "nord"};
-		this.device = ShellUtils.fastCmd("getprop ro.product.device ");
-		this.model = ShellUtils.fastCmd("getprop ro.product.model");
-		if (!Arrays.asList(supported).contains(this.device)) {
+		if (this.unsupported) {
 			this.device = "unknown";
 			if (!pref.getAGREE(this)) {
 				messages.setText(this.getString(R.string.unsupported));
@@ -2160,8 +2120,7 @@ public class MainActivity extends AppCompatActivity {
 				});
 			}	
 		}
-		String stram = MainActivity.extractNumberFromString(new RAM().getMemory(this.getApplicationContext()));
-		this.ramvalue = Double.parseDouble(stram) / 100;
+		this.ramvalue = Double.parseDouble(new RAM().getMemory(this));
 		String run = ShellUtils.fastCmd(" su -c cat /proc/cmdline ");
 		if (run.isEmpty()) panel = "Unknown";
 		else {
@@ -2249,7 +2208,6 @@ public class MainActivity extends AppCompatActivity {
 	public void checkuefi() {
 		ShellUtils.fastCmd("su -c mkdir /sdcard/UEFI");
 		this.finduefi = "\""+ShellUtils.fastCmd(this.getString(R.string.uefiChk))+"\"";
-		this.device = ShellUtils.fastCmd("getprop ro.product.device ");
 		if (finduefi.contains("img")) {
 			this.x.tvQuickBoot.setText(getString(R.string.quickboot_title));
 			this.x.cvQuickBoot.setEnabled(true);
@@ -2266,41 +2224,24 @@ public class MainActivity extends AppCompatActivity {
 			this.n.tvUefiSubtitle.setText(this.getString(R.string.uefi_not_found_subtitle, this.device));
 			this.n.cvFlashUefi.setEnabled(false);
 		}
-		checkwin();
 	}
 	
 	public void checkwin() {
-		String checkingforwin = ShellUtils.fastCmd("find /dev/block | grep win");
-		if (checkingforwin.isEmpty()) {
-			String checkingformindows = ShellUtils.fastCmd("find /dev/block | grep mindows");
-			if (checkingformindows.isEmpty()) {
-				String checkingforwindows = ShellUtils.fastCmd("find /dev/block | grep windows");
-				if (checkingforwindows.isEmpty()) {
-					String checkingforWin = ShellUtils.fastCmd("find /dev/block | grep Win");
-					if (checkingforWin.isEmpty()) {
-						String checkingforMindows = ShellUtils.fastCmd("find /dev/block | grep Mindows");
-						if (checkingforMindows.isEmpty()) {
-							String checkingforWindows = ShellUtils.fastCmd("find /dev/block | grep Windows");
-							if (checkingforWindows.isEmpty()) {
-								final Dialog dialog = new Dialog(this);
-								dialog.setContentView(R.layout.dialog);
-								dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-								TextView messages = dialog.findViewById(R.id.messages);
-								messages.setText(getString(R.string.partition));
-								dialog.show();
-								dialog.setCancelable(false);
-								this.x.cvMnt.setEnabled(false);
-								this.x.cvToolbox.setEnabled(false);
-								this.x.cvQuickBoot.setEnabled(false);
-								this.n.cvFlashUefi.setEnabled(false);
-							}
-						}
-					}
-				}
-			}
+		if (this.win.isEmpty()) {
+			final Dialog dialog = new Dialog(this);
+			dialog.setContentView(R.layout.dialog);
+			dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+			TextView messages = dialog.findViewById(R.id.messages);
+			messages.setText(getString(R.string.partition));
+			dialog.show();
+			dialog.setCancelable(false);
+			this.x.cvMnt.setEnabled(false);
+			this.x.cvToolbox.setEnabled(false);
+			this.x.cvQuickBoot.setEnabled(false);
+			this.n.cvFlashUefi.setEnabled(false);
 		}
 	}
-	
+
 	public void checkupdate() {
 		if (!pref.getAppUpdate(this)) {
 			if (!MainActivity.isNetworkConnected(this)) {
@@ -2461,13 +2402,5 @@ public class MainActivity extends AppCompatActivity {
 		config.setLocale(new Locale(locale.toLowerCase()));
 		resources.updateConfiguration(config, dm);
 		pref.setlocale(this, locale);
-	}
-
-	public ExecutorService getExecutorService() {
-		return this.executorService;
-	}
-
-	public void setExecutorService(final ExecutorService executorService) {
-		this.executorService = executorService;
 	}
 }
